@@ -1,2 +1,0 @@
-#此处格式为"fedx用户名:node节点IP:fedx用户密码:ssh端口号"
-fedx:172.20.8.111:fedx:22
