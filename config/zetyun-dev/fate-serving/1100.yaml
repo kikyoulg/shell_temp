@@ -1,0 +1,114 @@
+name: fate-serving-1100
+namespace: fate-serving-1100
+chartName: fate-serving
+chartVersion: v2.1.5
+partyId: 1100
+registry: "registry.zet-fl.com/fedx"
+imageTag: 2.1.5-release-fedx
+pullPolicy: 
+imagePullSecrets: 
+- name: myregistrykey
+persistence: false
+istio:
+  enabled: false
+podSecurityPolicy:
+  enabled: false
+modules:
+  - servingProxy
+  - servingRedis
+  - servingServer
+  - servingZookeeper
+  - servingAdmin
+
+# ingress:
+  # servingProxy: 
+    # # annotations: 
+    # hosts:
+    # - name: serving-proxy.kubefate.net
+      # path: /
+  # # tls:
+    # # - secretName: my-tls-secret
+      # # hosts:
+        # # - serving-proxy.kubefate.net
+  # servingAdmin: 
+    # # annotations: 
+    # hosts:
+    # - name: serving-admin.kubefate.net
+      # path: /
+  # # tls:
+    # # - secretName: my-tls-secret
+      # # hosts:
+         # # - serving-admin.kubefate.net
+
+# servingAdmin:
+  # nodeSelector:
+  # tolerations:
+  # affinity:
+  # username: admin
+  # password: admin
+
+servingProxy: 
+  # nodePort: 30310
+  type: ClusterIP
+  # nodeSelector:
+  # tolerations:
+  # affinity:
+  partyList:
+  - partyId: 1000
+    partyIp: fate-serving-proxy-cluster-ip
+    partyPort: 1005
+  - partyId: 2000
+    partyIp: fate-serving-proxy-cluster-ip
+    partyPort: 2005
+  # exchange:
+    # ip: 192.168.1.1
+    # port: 30100
+
+servingServer:
+  type: ClusterIP
+  # nodePort: 30210
+  # nodeSelector:
+  # tolerations:
+  # affinity:
+  fateflow:
+    ip: fate-serving-proxy-cluster-ip
+    port: 9380
+  # subPath: ""
+  # existingClaim: ""
+  # storageClass: "serving-server"
+  # accessMode: ReadWriteOnce
+  # size: 1Gi
+  singleAdaptor: com.webank.ai.fate.serving.adaptor.dataaccess.CustomAdapter
+  batchAdaptor: com.webank.ai.fate.serving.adaptor.dataaccess.CustomBatchAdapter
+  clickhouse:
+    url: jdbc:ch://fedx-proxy-cluster-ip.fedx-1100.svc.cluster.local:8123/default
+    username: default
+    password: ck@12345
+  printInputData: true
+  printOutputData: true
+
+# servingRedis:
+  # password: fate_dev
+  # nodeSelector:
+  # tolerations:
+  # affinity:
+  # subPath: ""
+  # existingClaim: ""
+  # storageClass: "serving-redis"
+  # accessMode: ReadWriteOnce
+  # size: 1Gi
+
+# externalRedisIp: ""
+# externalRedisPort: ""
+# externalRedisPassword: ""
+
+
+# servingZookeeper:
+  # nodeSelector:
+  # tolerations:
+  # affinity:
+  # subPath: ""
+  # existingClaim: ""
+  # storageClass: "serving-zookeeper"
+  # accessMode: ReadWriteOnce
+  # size: 1Gi

@@ -1,0 +1,236 @@
+module:
+  persistence: false
+  resourceConf: false
+  readinessProbe: false
+realAi:
+  nodePort: 30009
+fedx:
+  namespace: fedx-2000
+fate:
+  party-id: 2000
+  namespace: fate-2000
+image:
+  repository: registry.zet-fl.com/fedx
+  pullPolicy: Always
+  imageTag: v4.2.1
+storage:
+  storageClassName: nfs
+  mysqlRequestStorageSize: 10Gi
+  nfsPath: /mjmp/nfs
+  nfsServer: 172.20.8.55
+readinessProbe:
+  initialDelaySeconds: 0
+  timeoutSeconds: 1
+  periodSeconds: 3
+  successThreshold: 1
+  failureThreshold: 5
+fedx-api:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+  service:
+    type: NodePort
+    nodePort: 31221
+  product-fedx-api: http://fedx-proxy-cluster-ip.fedx-2000:8081
+  realai:
+    url: http://rsc-service.rsc3.svc.cluster.local:80
+fedx-job-api:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+  product-fedx-job-api: http://fedx-job-api.fedx-2000:8081
+fedx-job-worker:
+  resources:
+    requests:
+      cpu: 1
+      memory: 512Mi
+    limits:
+      cpu: 2
+      memory: 1Gi
+fedx-postman:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+  partners:
+    - party-id: 1000
+      kafka-bootstrap: fedx-proxy-cluster-ip:1008
+    - party-id: 1100
+      kafka-bootstrap: fedx-proxy-cluster-ip:1108
+    - party-id: 2000
+      kafka-bootstrap: fedx-proxy-cluster-ip:9092
+
+mysql:
+  name: fedx_spdb_custom
+  user: root
+  passwd: V2FAMTIzNDU2
+  host: mysql
+  port: 3306
+  imageTag: 8.0.26
+  resources:
+    requests:
+      cpu: 1
+      memory: 2Gi
+    limits:
+      cpu: 2
+      memory: 4Gi
+  service:
+    type: NodePort
+    nodePort: 31222
+fedx-proxy:
+  nodePort: 30012
+  # nodePort: 31220
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+  party:
+    ports:
+      # party: 1000
+      - name: kafka-1008
+        protocol: TCP
+        port: 1008
+        targetPort: 1008
+      # party: 1100
+      - name: kafka-1108
+        protocol: TCP
+        port: 1108
+        targetPort: 1108
+      # party: 2000
+      - name: kafka-2008
+        protocol: TCP
+        port: 2008
+        targetPort: 2008
+    mounts:
+      - name: fedx-proxy
+        mountPath: /etc/nginx/tcp.d/party-1000.conf
+        subPath: party-1000.conf
+      - name: fedx-proxy
+        mountPath: /etc/nginx/tcp.d/party-1100.conf
+        subPath: party-1100.conf
+      - name: fedx-proxy
+        mountPath: /etc/nginx/tcp.d/party-2000.conf
+        subPath: party-2000.conf
+    confs:
+      party-1000.conf: |-
+        server {
+          listen 1008;
+          proxy_pass 1000.proxy.kubefate.net:31008;
+          proxy_ssl on;
+
+          proxy_ssl_certificate /etc/nginx/tls/peer.pem;
+          proxy_ssl_certificate_key /etc/nginx/tls/peer-key.pem;
+          proxy_ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+          proxy_ssl_ciphers HIGH:!aNULL:!MD5;
+          proxy_ssl_session_reuse on;
+          proxy_ssl_verify on;
+          proxy_ssl_verify_depth 2;
+          proxy_ssl_trusted_certificate /etc/nginx/tls/ca-chain.pem;
+        }
+      party-1100.conf: |-
+        server {
+          listen 1108;
+          proxy_pass 1100.proxy.kubefate.net:31108;
+          proxy_ssl on;
+
+          proxy_ssl_certificate /etc/nginx/tls/peer.pem;
+          proxy_ssl_certificate_key /etc/nginx/tls/peer-key.pem;
+          proxy_ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+          proxy_ssl_ciphers HIGH:!aNULL:!MD5;
+          proxy_ssl_session_reuse on;
+          proxy_ssl_verify on;
+          proxy_ssl_verify_depth 2;
+          proxy_ssl_trusted_certificate /etc/nginx/tls/ca-chain.pem;
+        }
+      party-2000.conf: |-
+        server {
+          listen 2008 ssl;
+          proxy_pass kafka-headless.fedx-2000:9092;
+          proxy_ssl off;
+
+          ssl_certificate /etc/nginx/tls/peer.pem;
+          ssl_certificate_key /etc/nginx/tls/peer-key.pem;
+          ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+          ssl_ciphers HIGH:!aNULL:!MD5;
+          ssl_session_cache shared:SSL:20m;
+          ssl_session_timeout 4h;
+          ssl_handshake_timeout 30s;
+          ssl_verify_client on;
+          ssl_verify_depth 2;
+          ssl_client_certificate /etc/nginx/tls/ca-chain.pem;
+        }
+
+fedx-web:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+  custom-config:
+    config.json: |-
+      {
+        "fateUrl": "https://www.baidu.com",
+        "fedLearnerUrl": "https://www.ele.me",
+        "detailList": [
+          {
+          "id": 7,
+          "imgUrl": "el-icon-yinsiqiujiao",
+          "title": "隐私求交",
+          "type": "a链接",
+          "path": "http://172.20.8.55:30009/project-center/detail/data-prepare/get/?queryString=psi&projectId=$pid&token=$token"
+        },
+        {
+          "id": 8,
+          "imgUrl": "el-icon-tezhenggongcheng",
+          "title": "特征工程",
+          "path": "http://172.20.8.55:30009/project-center/detail/data-prepare/get/?queryString=bimodalModeling&projectId=$pid&token=$token",
+          "type": "a链接"
+        },
+        {
+          "id": 9,
+          "imgUrl": "el-icon-nizongchaxun",
+          "title": "匿踪查询",
+          "type": "a链接",
+          "path": "http://172.20.8.55:30009/project-center/detail/data-prepare/get/?queryString=hideEnquire&projectId=$pid&token=$token"
+        },
+        {
+          "id": 10,
+          "imgUrl": "el-icon-lianhefenxi",
+          "title": "联合分析",
+          "path": "http://172.20.8.55:30009/project-center/detail/data-prepare/get/?queryString=mpc&projectId=$pid&token=$token",
+          "type": "a链接"
+        }
+        ],
+        "ruilaiHost":"http://172.20.8.55:30009",
+        "sso": false
+      }
+nginx:
+  imageTag: 1.22.0
+  PullPolicy: IfNotPresent
+kafka:
+  port: 2008
+  targetPort: 2008
+  nodePort: 32008
+fedLearner:
+  address: http://39.105.91.102:30200
+fate-serving:
+  namespace: fate-serving-2000
+sso:
+  callback-url: http://localhost:8081/custom-fedx-api/sso/callback
+  home-url: http://172.20.9.1:31000/pj/project?token=

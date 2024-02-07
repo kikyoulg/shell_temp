@@ -1,0 +1,148 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fedx-postman
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: fedx-postman
+  ports:
+  - port: 8081
+    targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fedx-postman
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: fedx-postman
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fedx-postman
+  template:
+    metadata:
+      annotations:
+        reloader.stakater.com/auto: "true"
+      labels:
+        app: fedx-postman
+    spec:
+      containers:
+      - name: fedx-postman
+        image: {{ .Values.image.repository }}/fedx-postman:{{ .Values.image.imageTag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+      {{ if .Values.module.resourceConf }}
+        resources:
+        {{- with index .Values "fedx-postman" "resources" }}
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.module.readinessProbe }}
+        readinessProbe:
+          tcpSocket:
+            port: 8081
+          {{- with .Values.readinessProbe }}
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+      {{- end }}
+      {{- if .Values.module.livenessProbe }}
+        livenessProbe:
+          tcpSocket:
+            port: 8081
+          {{- with .Values.livenessProbe }}
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+      {{- end }}
+        volumeMounts:
+          - name: fedx-postman
+            mountPath: /app/application.yml
+            subPath: application.yml
+      volumes:
+      - name: fedx-postman
+        configMap:
+          name: fedx-postman
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fedx-postman
+  labels:
+    app: fedx-postman
+  namespace: {{ .Release.Namespace }}
+data:
+  application.yml: |-
+    server:
+      port: 8081
+
+    spring:
+      application:
+        name: fedx-postman
+
+    pulsar:
+      service-url: pulsar://pulsar.{{ .Values.fate.namespace }}.svc.cluster.local:6650
+      io-threads: 10
+      listener-threads: 10
+      enable-tcp-no-delay: false
+      keep-alive-interval-sec: 20
+      connection-timeout-sec: 10
+      operation-timeout-sec: 15
+      starting-backoff-interval-ms: 10000
+      max-backoff-interval-sec: 10
+      consumer-name-delimiter:
+      namespace: default
+      tenant: public
+      consumer:
+        default:
+          dead-letter-policy-max-redeliver-count: -1
+          ack-timeout-ms: 3000
+
+    # RestTemplate配置
+    rest:
+      connection:
+        connection-request-timeout: 15000
+        connect-timeout: 15000
+        read-timeout: 15000
+
+    # 邮差服务配置
+    postman:
+      # 本端ID
+      party-id: {{ index .Values.fate "party-id" }}
+      # 同步调用结果缓存gc生命, 每隔3分钟启动一轮gc, 配置值表示超过多少隔gc轮次的缓存会被清除掉
+      sync-rsp-cache-max-gc-age: 5
+      # 服务配置列表
+      # 是否开启异常追踪
+      exception:
+        trace-enabled: true
+      services:
+          # 应用服务名称, 任意端之间需要保持一致
+        - name: fedx-postman
+          # 本端应用服务地址
+          url: http://fedx-postman.{{ .Release.Namespace }}:8081
+        - name: fedx-api
+          url: http://fedx-api.{{ .Release.Namespace }}:8081
+      # 合作端配置列表, 本端也算一个合作端
+      partners:
+        {{- with index .Values "fedx-postman" "partners" }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+
+    # Swagger API-Doc配置
+    api-doc:
+      title: ${spring.application.name} 邮差服务
+      description: 封装Pulsar, 对上层应用提供服务
+      termsOfServiceUrl: http://www.zetyun.com
+      contact:
+        name: Contact
+        url: http://www.zetyun.com
+        email: contact@zetyun.com
+      version: 1.0.0-SNAPSHOT
+    logging:
+      level:
+        com.zetyun.fedx.postman: info
+        root: info
+    dianxin:
+      url: http://127.0.0.1:8082
+      partyid: 2222
+

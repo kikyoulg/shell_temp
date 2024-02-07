@@ -1,0 +1,199 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fedx-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: fedx-api
+spec:
+  type: {{ index .Values "fedx-api" "service" "type" }}
+  ports:
+  - port: 8081
+    targetPort: 8081
+    nodePort: {{ index .Values "fedx-api" "service" "nodePort" }}
+  selector:
+    app: fedx-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fedx-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: fedx-api
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        reloader.stakater.com/auto: "true"
+      labels:
+        app: fedx-api
+    spec:
+      {{- if .Values.module.initContainers }}
+      initContainers:
+        {{- include "initContainers" . | indent 6 }}
+      {{- end }}
+      containers:
+      - name: fedx-api
+        image: {{ .Values.image.repository }}/fedx-api:{{ .Values.image.imageTag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+      {{ if .Values.module.resourceConf }}
+        resources:
+        {{- with index .Values "fedx-api" "resources" }}
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.module.readinessProbe }}
+        readinessProbe:
+          tcpSocket:
+            port: 8081
+          {{- with .Values.readinessProbe }}
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+      {{- end }}
+      {{- if .Values.module.livenessProbe }}
+        livenessProbe:
+          tcpSocket:
+            port: 8081
+          {{- with .Values.livenessProbe }}
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+      {{- end }}
+        volumeMounts:
+          - name: fedx-api
+            mountPath: /fedx-api/application.yml
+            subPath: application.yml
+          {{ if .Values.module.persistence  }}
+          - name: datax-data
+            mountPath: /datax/job
+          {{ end }}
+          - name: data
+            mountPath: /data
+          - name: cm-krb5
+            mountPath: /fedx-api/krb5.conf
+            subPath: krb5.conf
+      volumes:
+      - name: fedx-api
+        configMap:
+          name: fedx-api
+      {{ if .Values.module.persistence  }}
+      - name: datax-data
+        persistentVolumeClaim:
+          claimName: pvc-datax
+      {{ end }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: pvc-share
+      - name: cm-krb5
+        configMap:
+          name: cm-krb5
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fedx-api
+  labels:
+    app: fedx-api
+  namespace: {{ .Release.Namespace }}
+data:
+  application.yml: |
+    server:
+      port: 8081
+
+    spring:
+      application:
+        name: fedx-api
+      datasource:
+        mysql:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://{{ .Values.mysql.host }}:{{ .Values.mysql.port }}/{{ .Values.mysql.name }}?characterEncoding=UTF-8&useUnicode=true&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+          username: {{ .Values.mysql.user }}
+          password: {{ .Values.mysql.passwd }}
+        clickhouse:
+          driver-class-name: ru.yandex.clickhouse.ClickHouseDriver
+          url: {{ .Values.clickhouse.url }}{{ .Values.clickhouse.database }}
+          username: {{ .Values.clickhouse.username }}
+          password: {{ .Values.clickhouse.passwd }}
+        
+      jackson:
+        date-format: yyyy-MM-dd HH:mm:ss
+        time-zone: GMT+8
+      servlet:
+        multipart:
+          max-file-size: 500MB
+          max-request-size: 500MB
+      redis:
+        host: {{ .Values.redis.host }}
+        port: {{ .Values.redis.port }}
+        connect-timeout: 10000ms
+    database: 1
+    pagehelper:
+      helper-dialect: mysql
+      reasonable: true
+      support-methods-arguments: true
+      params: count=countSql
+      page-size-zero: true
+
+    logging:
+      level:
+        com.zetyun.fedx.api.dal.dao: INFO
+        root: INFO
+
+    swagger:
+      enabled: true
+
+    fedx:
+      job:
+        address: http://fedx-job-api.{{ .Release.Namespace }}:8081
+      fateflow:
+        address: http://fate-proxy-cluster-ip.{{ .Values.fate.namespace }}:9380
+      fateboard:
+        address: http://fedx-proxy-cluster-ip.{{ .Release.Namespace }}:8280
+      namenode:
+        address: hdfs://fedx-proxy-cluster-ip.{{ .Release.Namespace }}:9000
+      dolphin:
+        address: http://172.20.8.168:12345
+      fedlearn:
+        address: {{ .Values.fedLearner.address }}
+      fateserving:
+        address: http://fedx-proxy-cluster-ip.{{ .Release.Namespace }}:8350
+      fateservingproxy:
+        address: http://fedx-proxy-cluster-ip.{{ .Release.Namespace }}:8059
+      pulsar:
+        address: pulsar://pulsar.{{ .Values.fate.namespace }}.svc.cluster.local:6650
+    model-serving:
+      address: http://{{ .Values.ip.localIp }}:{{ index .Values "fedx-api" "service" "nodePort" }}
+    project:
+      role:
+        super:
+          user: SUPER
+    jwt:
+      expiration: 7200000
+      header: Authorization
+      secret: NDU0NTY4amhmc3NkeHp6eGNxdzIlMjFAJTIxQCUyM2ZmNQ==
+
+    file:
+      path: "/data/"
+
+    spark-limit:
+      cpu: 96
+      memory: 99
+
+    hive:
+      selector: {{ index .Values "fedx-api" "hive" "selector" }}
+    auth:
+      field: Zetyun@2304
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-krb5
+  namespace:  {{ .Release.Namespace }}
+data:
+  krb5.conf: |-
+  {{- $files := .Files }}
+  {{- range tuple "krb5.conf" }}
+{{ $files.Get . }}
+  {{- end }}

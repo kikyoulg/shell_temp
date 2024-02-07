@@ -1,0 +1,269 @@
+module:
+  resourceConf: true
+  probes: true
+  persistence: true
+image:
+  repository: registry.zet-fl.com/bsd
+  pullPolicy: Always
+  imageTag: v1.0.0
+storage:
+  storageClassName: nfs
+  mysqlRequestStorageSize: 10Gi
+  shareDirSize: 5Gi
+  nfsPath: /mjmp/nfs
+  nfsServer: 172.20.8.55
+probes:
+  readinessProbe:
+    initialDelaySeconds: 0
+    timeoutSeconds: 1
+    periodSeconds: 3
+    successThreshold: 1
+    failureThreshold: 5
+  livenessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+mysql:
+  database: bsd
+  user: root
+  passwd: ENC(QkzObmGr1+KdEd5tMSKvMetlpQ4wJMXCGxUIBhZsmHyOHuKkFQ/q+QmitOt/KXWknwIGcCaX/0EzVH02DNpJPg==)
+  host: 172.20.8.110
+  port: 30306
+  imageTag: 8.0.28
+  imagePullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 1
+      memory: 2Gi
+    limits:
+      cpu: 4
+      memory: 8Gi
+  service:
+    type: NodePort
+    nodePort: 31006
+redis:
+  host: 172.20.8.110
+  port: 30997
+  fedx-redis:
+    host: 172.20.8.110
+    port: 30995
+clickhouse:
+  url: jdbc:clickhouse://172.20.8.110:30996/
+  database: default
+  username: default
+  passwd: ENC(c9Ao+kF7PaUBp/lUL0Xoizu5OkqOULU91rAlbAJ25uKTtPBjw1UUK80HkMDipVz2hCnsd73M80Iw3GwcExD3yQ==)
+  engine: S3
+kafka:
+  port: 1008
+  targetPort: 1008
+  nodePort: 31008
+hdfs:
+  namenode:
+    address: hdfs://172.20.8.110:30998
+fedx:
+  namespace: fedx-1000
+bsd-resource:
+  localserver:
+    controladdress: http://172.20.8.55:30801
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 4
+      memory: 4Gi
+bsd-transfer:
+  node:
+    address: 6871133019151798272_http://bsd-proxy-tcp:8082;6871136227660140544_http://bsd-proxy-tcp:8083
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 4
+      memory: 4Gi
+bsd-adaptor:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 4
+      memory: 4Gi
+bsd-web:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 3Gi
+    limits:
+      cpu: 1
+      memory: 6Gi
+  custom-config:
+    config.json: |-
+      {
+        "fateUrl": "https://www.baidu.com",
+        "fedLearnerUrl": "https://www.ele.me",
+        "detailList": [
+          {
+          "id": 7,
+          "imgUrl": "el-icon-yinsiqiujiao",
+          "title": "隐私求交",
+          "type": "a链接",
+          "path": "http://172.20.8.55:30003/project-center/detail/data-prepare/get/?queryString=psi&projectId=$pid&token=$token"
+        },
+        {
+          "id": 8,
+          "imgUrl": "el-icon-tezhenggongcheng",
+          "title": "特征工程",
+          "path": "http://172.20.8.55:30003/project-center/detail/data-prepare/get/?queryString=bimodalModeling&projectId=$pid&token=$token",
+          "type": "a链接"
+        },
+        {
+          "id": 9,
+          "imgUrl": "el-icon-nizongchaxun",
+          "title": "匿踪查询",
+          "type": "a链接",
+          "path": "http://172.20.8.55:30003/project-center/detail/data-prepare/get/?queryString=hideEnquire&projectId=$pid&token=$token"
+        },
+        {
+          "id": 10,
+          "imgUrl": "el-icon-lianhefenxi",
+          "title": "联合分析",
+          "path": "http://172.20.8.55:30003/project-center/detail/data-prepare/get/?queryString=mpc&projectId=$pid&token=$token",
+          "type": "a链接"
+        }
+        ],
+        "ruilaiHost":"http://172.20.8.55:30003",
+        "sso": false
+      }
+bsd-workflow:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 4
+      memory: 4Gi
+bsd-container:
+  message-type: mesh
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 4
+      memory: 4Gi
+k8s:
+  address: https://172.20.8.55:6443/
+  token:  eyJhbGciOiJSUzI1NiIsImtpZCI6IjFtd3lRend4bVd0TXd1Q2poY3JFbG1wMGtVNVduN0JObnhLRlVKN0dNZ0kifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLW5nbnhyIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiJjMzgwMzI1ZS1lN2RmLTRhYzYtYjM4Zi02Yzg5YTRmZTM5YjIiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06YWRtaW4tdXNlciJ9.hIMMfofKmWUWQIGrqLYA_D01KprLN9hRVZFaqli17pC4UuAJJlIzKeAyVdp5CMrFYFUJRnJoRXbbLnu1MAbgI0H-lJF-9294HYpSr_NbLGPQpudgLj66doh3-PtwuTYHBDu-IW15KjcbMfTfD2J-fCHwr9OaHi3RyjImSRZPHUNqwQTQErovm7igmMAMwatpHtnGGRePwo9eRdZYhceSmm0Q5oaG6spKIfUBhl8MxNgoCPN5mKYidUGqeVcz6jnZ5bFjMZgzB7_bIl1KGdWWZBxEnImGSeqPC8eXODFE8iFjHgRVLsc6sUJGYIMjg4_21GfQg7qg53GEH8gNLHNIIQ
+envoy:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 50Mi
+    limits:
+      cpu: 1
+      memory: 100Mi
+  nodePort:
+    bsd-web: 30030
+    bsd-transfer: 30801
+  tcp:
+    tcp-service:
+      - name: bsd-transfer-1100
+        protocol: TCP
+        port: 8082
+        targetPort: 8082
+      - name: bsd-transfer-2000
+        protocol: TCP
+        port: 8083
+        targetPort: 8083
+    conf:
+      static_resources:
+        listeners:
+        - name: local_transfer
+          address:
+            socket_address:
+              address: 0.0.0.0
+              port_value: 8081
+          filter_chains:
+          - filters:
+            - name: envoy.filters.network.tcp_proxy
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+              # access_log:
+              #   - name: envoy.access_loggers.stdout
+              #     typed_config:
+              #       "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+              #       log_format:
+              #         text_format_source:
+              #           inline_string: "[%START_TIME%] %DOWNSTREAM_REMOTE_ADDRESS% - %UPSTREAM_HOST% [%RESPONSE_FLAGS%] %BYTES_RECEIVED% %BYTES_SENT% %DURATION%\n"
+                stat_prefix: tcp_proxy
+                cluster: bsd-transfer
+        - name: 1100_transfer
+          address:
+            socket_address:
+              address: 0.0.0.0
+              port_value: 8082
+          filter_chains:
+          - filters:
+            - name: envoy.filters.network.tcp_proxy
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+                stat_prefix: tcp_proxy
+                cluster: bsd-transfer-bsd-1100
+        - name: 2000_transfer
+          address:
+            socket_address:
+              address: 0.0.0.0
+              port_value: 8083
+          filter_chains:
+          - filters:
+            - name: envoy.filters.network.tcp_proxy
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+                stat_prefix: tcp_proxy
+                cluster: bsd-transfer-bsd-2000
+        clusters:
+        - name: bsd-transfer
+          type: STRICT_DNS
+          lb_policy: ROUND_ROBIN
+          load_assignment:
+            cluster_name: bsd-transfer
+            endpoints:
+            - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: bsd-transfer
+                      port_value: 8081
+        - name: bsd-transfer-bsd-1100
+          type: STRICT_DNS
+          lb_policy: ROUND_ROBIN
+          load_assignment:
+            cluster_name: bsd-transfer-bsd-1100
+            endpoints:
+            - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: 172.20.8.55
+                      port_value: 30811
+        - name: bsd-transfer-bsd-2000
+          type: STRICT_DNS
+          lb_policy: ROUND_ROBIN
+          load_assignment:
+            cluster_name: bsd-transfer-bsd-2000
+            endpoints:
+            - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: 172.20.8.55
+                      port_value: 30821
+mesh:
+  address: 172.20.8.55:7304
+s3:
+  path: 172.20.8.55:30900
+  bucket: storage
+  access-key: admin
+  secret-key: Wa@123456
+  format: CSVWithNames
